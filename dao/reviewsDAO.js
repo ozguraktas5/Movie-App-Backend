@@ -1,17 +1,17 @@
-import mongodb, { ObjectId } from 'mongodb';
-const objectId = mongodb.ObjectId;
+import mongodb from "mongodb"
+const ObjectId = mongodb.ObjectId
 
-let reviews;
+let reviews
 
 export default class ReviewsDAO {
   static async injectDB(conn) {
     if (reviews) {
-      return;
+      return
     }
     try {
-      reviews = await conn.db('reviews').collection('reviews');
+      reviews = await conn.db("reviews").collection("reviews")
     } catch (e) {
-      console.error(`Unable to establish collection handles in userDAO: ${e}`);
+      console.error(`Unable to establish collection handles in userDAO: ${e}`)
     }
   }
 
@@ -21,48 +21,91 @@ export default class ReviewsDAO {
         movieId: movieId,
         user: user,
         review: review,
-      };
-
-      return await reviews.insertOne(reviewDoc);
+      }
+      console.log("adding")
+      return await reviews.insertOne(reviewDoc)
     } catch (e) {
-      console.error(`Unable to post review: ${e}`);
-      return { error: e };
+      console.error(`Unable to post review: ${e}`)
+      return { error: e }
     }
   }
 
   static async getReview(reviewId) {
     try {
-      return await reviews.findOne({ _id: ObjectId(reviewId) });
+      if (ObjectId.isValid(reviewId)) {
+        const objectId = new ObjectId(reviewId);
+        const review = await reviews.findOne({ _id: objectId });
+        return review;
+      } else {
+        console.error("Invalid ObjectId format");
+        return { error: "Invalid ObjectId format" };
+      }
     } catch (e) {
       console.error(`Unable to get review: ${e}`);
       return { error: e };
     }
   }
 
+
   static async updateReview(reviewId, user, review) {
     try {
-      const updateResponse = await reviews.updateOne(
-        { _id: ObjectId(reviewId) },
-        { $set: { user: user, review: review } }
-      )
-      return updateResponse
+      // ObjectId'nin geçerli olup olmadığını kontrol edin
+      if (ObjectId.isValid(reviewId)) {
+        const objectId = new ObjectId(reviewId);
+
+        // Update işlemini geçerli ObjectId ile yapın
+        const updateResponse = await reviews.updateOne(
+          { _id: objectId },
+          { $set: { user: user, review: review } }
+        )
+
+        console.log("Update Response:", updateResponse);
+
+        // Update işlemi başarısız olduysa hata döndürün
+        if (updateResponse.modifiedCount === 0) {
+          return { error: "Review not found or no changes made" };
+        }
+
+        return updateResponse;
+      } else {
+        console.error("Invalid ObjectId format");
+        return { error: "Invalid ObjectId format" };
+      }
     } catch (e) {
-      console.error(`Unable to update review: ${e}`)
-      return {error: e}
+      console.error(`Unable to update review: ${e}`);
+      return { error: e.message };
     }
   }
 
   static async deleteReview(reviewId) {
-    try {
-      const deleteResponse = await reviews.deleteOne({
-        _id: ObjectId(reviewId),
-      })
-      return deleteResponse
-    } catch (e) {
-      console.error(`Unable to delete review: ${e}`)
-      return { error: e }
+      try {
+        // ObjectId'nin geçerli olup olmadığını kontrol edin
+        if (ObjectId.isValid(reviewId)) {
+          const objectId = new ObjectId(reviewId);
+
+          // Delete işlemini geçerli ObjectId ile yapın
+          const deleteResponse = await reviews.deleteOne({
+            _id: objectId,
+          })
+
+          console.log("Delete Response:", deleteResponse);
+
+          // Silme işlemi başarısız olduysa hata döndürün
+          if (deleteResponse.deletedCount === 0) {
+            return { error: "Review not found" };
+          }
+
+          return deleteResponse;
+        } else {
+          console.error("Invalid ObjectId format");
+          return { error: "Invalid ObjectId format" };
+        }
+      } catch (e) {
+        console.error(`Unable to delete review: ${e}`);
+        return { error: e.message };
+      }
     }
-  }
+
 
   static async getReviewsByMovieId(movieId) {
     try {
@@ -73,4 +116,5 @@ export default class ReviewsDAO {
       return { error: e }
     }
   }
+
 }
